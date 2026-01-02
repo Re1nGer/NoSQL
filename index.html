@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pasture Management Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #eee; }
+        
+        .header { background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); padding: 20px; border-bottom: 2px solid #0f3460; }
+        .header h1 { font-size: 24px; color: #00d9ff; }
+        .header p { color: #888; font-size: 14px; margin-top: 5px; }
+        
+        .dashboard { display: grid; grid-template-columns: 250px 1fr 300px; gap: 20px; padding: 20px; min-height: calc(100vh - 80px); }
+        
+        /* Sidebar */
+        .sidebar { background: #16213e; border-radius: 10px; padding: 20px; }
+        .sidebar h3 { color: #00d9ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
+        .field-list { list-style: none; }
+        .field-item { padding: 12px; margin-bottom: 8px; background: #1a1a2e; border-radius: 8px; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
+        .field-item:hover { background: #0f3460; }
+        .field-item.active { border-left-color: #00d9ff; background: #0f3460; }
+        .field-item .name { font-weight: 600; }
+        .field-item .status { font-size: 12px; margin-top: 4px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-low { background: #4ade80; }
+        .status-medium { background: #fbbf24; }
+        .status-high { background: #f97316; }
+        .status-critical { background: #ef4444; }
+        
+        /* Main Content */
+        .main { display: flex; flex-direction: column; gap: 20px; }
+        
+        .map-container { background: #16213e; border-radius: 10px; padding: 20px; flex: 1; min-height: 300px; position: relative; }
+        .map-container h3 { color: #00d9ff; margin-bottom: 15px; }
+        .map-placeholder { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); border-radius: 8px; height: calc(100% - 40px); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .map-field { position: absolute; width: 60px; height: 60px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; cursor: pointer; transition: transform 0.2s; }
+        .map-field:hover { transform: scale(1.1); z-index: 10; }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .metric-card { background: #16213e; border-radius: 10px; padding: 20px; text-align: center; }
+        .metric-card .label { font-size: 12px; color: #888; text-transform: uppercase; }
+        .metric-card .value { font-size: 32px; font-weight: 700; margin: 10px 0; }
+        .metric-card .unit { font-size: 14px; color: #888; }
+        .metric-card.ndvi .value { color: #4ade80; }
+        .metric-card.moisture .value { color: #60a5fa; }
+        .metric-card.temp .value { color: #fbbf24; }
+        .metric-card.height .value { color: #a78bfa; }
+        
+        .chart-container { background: #16213e; border-radius: 10px; padding: 20px; }
+        .chart-container h3 { color: #00d9ff; margin-bottom: 15px; }
+        .chart { height: 200px; display: flex; align-items: flex-end; gap: 4px; padding: 20px 0; }
+        .bar { flex: 1; background: linear-gradient(to top, #0f3460, #00d9ff); border-radius: 4px 4px 0 0; transition: height 0.3s; position: relative; }
+        .bar:hover { background: linear-gradient(to top, #00d9ff, #4ade80); }
+        .bar::after { content: attr(data-value); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #888; opacity: 0; transition: opacity 0.2s; }
+        .bar:hover::after { opacity: 1; }
+        
+        /* Alerts Panel */
+        .alerts-panel { background: #16213e; border-radius: 10px; padding: 20px; }
+        .alerts-panel h3 { color: #00d9ff; margin-bottom: 15px; font-size: 14px; text-transform: uppercase; }
+        .alert-item { padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 3px solid; }
+        .alert-item.critical { background: rgba(239, 68, 68, 0.1); border-color: #ef4444; }
+        .alert-item.warning { background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; }
+        .alert-item.info { background: rgba(96, 165, 250, 0.1); border-color: #60a5fa; }
+        .alert-title { font-weight: 600; margin-bottom: 5px; }
+        .alert-detail { font-size: 12px; color: #888; }
+        .alert-time { font-size: 11px; color: #666; margin-top: 8px; }
+        .alert-action { margin-top: 10px; padding: 8px 12px; background: #0f3460; border: none; color: #00d9ff; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .alert-action:hover { background: #00d9ff; color: #1a1a2e; }
+        
+        .recommendations { margin-top: 20px; }
+        .rec-item { padding: 12px; margin-bottom: 8px; background: #1a1a2e; border-radius: 8px; font-size: 13px; }
+        .rec-item .priority { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-right: 8px; }
+        .priority-1 { background: #ef4444; }
+        .priority-2 { background: #f97316; }
+        .priority-3 { background: #fbbf24; color: #1a1a2e; }
+        
+        /* Data Source Labels */
+        .data-source { font-size: 10px; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #0f3460; }
+        .data-source span { padding: 2px 6px; border-radius: 3px; margin-right: 5px; }
+        .src-redis { background: #dc2626; }
+        .src-mongo { background: #16a34a; }
+        .src-cassandra { background: #2563eb; }
+        .src-neo4j { background: #9333ea; }
+        
+        /* Refresh indicator */
+        .refresh-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; }
+        .pulse { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌾 Pasture Management Dashboard</h1>
+        <p>Real-time monitoring and recommendations for optimal forage quality</p>
+    </div>
+    
+    <div class="dashboard">
+        <!-- Sidebar - Field List -->
+        <div class="sidebar">
+            <h3>Fields</h3>
+            <ul class="field-list">
+                <li class="field-item active">
+                    <div class="name">North Pasture</div>
+                    <div class="status"><span class="status-dot status-high"></span>High Risk</div>
+                </li>
+                <li class="field-item">
+                    <div class="name">South Meadow</div>
+                    <div class="status"><span class="status-dot status-low"></span>Low Risk</div>
+                </li>
+                <li class="field-item">
+                    <div class="name">East Field</div>
+                    <div class="status"><span class="status-dot status-medium"></span>Medium Risk</div>
+                </li>
+                <li class="field-item">
+                    <div class="name">West Paddock</div>
+                    <div class="status"><span class="status-dot status-low"></span>Low Risk</div>
+                </li>
+                <li class="field-item">
+                    <div class="name">Upper Pasture</div>
+                    <div class="status"><span class="status-dot status-critical"></span>Critical</div>
+                </li>
+                <li class="field-item">
+                    <div class="name">Lower Valley</div>
+                    <div class="status"><span class="status-dot status-low"></span>Low Risk</div>
+                </li>
+            </ul>
+            <div class="data-source">
+                <span class="src-redis">Redis</span> Real-time status
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main">
+            <!-- Map -->
+            <div class="map-container">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Field Map - Risk Overview</h3>
+                    <div class="refresh-indicator"><span class="pulse"></span> Live</div>
+                </div>
+                <div class="map-placeholder">
+                    <div class="map-field" style="top: 20%; left: 25%; background: #f97316;">N. Pasture</div>
+                    <div class="map-field" style="top: 50%; left: 20%; background: #4ade80;">S. Meadow</div>
+                    <div class="map-field" style="top: 30%; left: 55%; background: #fbbf24;">E. Field</div>
+                    <div class="map-field" style="top: 60%; left: 50%; background: #4ade80;">W. Paddock</div>
+                    <div class="map-field" style="top: 15%; left: 70%; background: #ef4444;">Upper</div>
+                    <div class="map-field" style="top: 70%; left: 75%; background: #4ade80;">L. Valley</div>
+                </div>
+                <div class="data-source">
+                    <span class="src-mongo">MongoDB</span> Geospatial boundaries
+                    <span class="src-redis">Redis</span> Risk classification
+                </div>
+            </div>
+            
+            <!-- Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card ndvi">
+                    <div class="label">NDVI</div>
+                    <div class="value">0.42</div>
+                    <div class="unit">vegetation index</div>
+                </div>
+                <div class="metric-card moisture">
+                    <div class="label">Soil Moisture</div>
+                    <div class="value">12%</div>
+                    <div class="unit">volumetric</div>
+                </div>
+                <div class="metric-card temp">
+                    <div class="label">Temperature</div>
+                    <div class="value">28°</div>
+                    <div class="unit">celsius</div>
+                </div>
+                <div class="metric-card height">
+                    <div class="label">Grass Height</div>
+                    <div class="value">8.2</div>
+                    <div class="unit">centimeters</div>
+                </div>
+            </div>
+            
+            <!-- Chart -->
+            <div class="chart-container">
+                <h3>30-Day NDVI Trend - North Pasture</h3>
+                <div class="chart">
+                    <div class="bar" style="height: 75%;" data-value="0.68"></div>
+                    <div class="bar" style="height: 73%;" data-value="0.66"></div>
+                    <div class="bar" style="height: 70%;" data-value="0.64"></div>
+                    <div class="bar" style="height: 72%;" data-value="0.65"></div>
+                    <div class="bar" style="height: 68%;" data-value="0.62"></div>
+                    <div class="bar" style="height: 65%;" data-value="0.59"></div>
+                    <div class="bar" style="height: 63%;" data-value="0.57"></div>
+                    <div class="bar" style="height: 60%;" data-value="0.55"></div>
+                    <div class="bar" style="height: 58%;" data-value="0.53"></div>
+                    <div class="bar" style="height: 55%;" data-value="0.50"></div>
+                    <div class="bar" style="height: 52%;" data-value="0.48"></div>
+                    <div class="bar" style="height: 50%;" data-value="0.46"></div>
+                    <div class="bar" style="height: 48%;" data-value="0.44"></div>
+                    <div class="bar" style="height: 46%;" data-value="0.42"></div>
+                </div>
+                <div class="data-source">
+                    <span class="src-cassandra">Cassandra</span> Time-series data (hourly refresh)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alerts Panel -->
+        <div class="alerts-panel">
+            <h3>Active Alerts</h3>
+            
+            <div class="alert-item critical">
+                <div class="alert-title">🚨 Critical: Low Soil Moisture</div>
+                <div class="alert-detail">Upper Pasture at 8.5% (threshold: 10%)</div>
+                <div class="alert-time">2 minutes ago</div>
+                <button class="alert-action">Schedule Irrigation</button>
+            </div>
+            
+            <div class="alert-item warning">
+                <div class="alert-title">⚠️ NDVI Declining</div>
+                <div class="alert-detail">North Pasture dropped 0.18 in 14 days</div>
+                <div class="alert-time">15 minutes ago</div>
+                <button class="alert-action">View Recommendations</button>
+            </div>
+            
+            <div class="alert-item warning">
+                <div class="alert-title">⚠️ High Temperature</div>
+                <div class="alert-detail">3 fields above 28°C for 6+ hours</div>
+                <div class="alert-time">1 hour ago</div>
+                <button class="alert-action">Activate Heat Protocol</button>
+            </div>
+            
+            <div class="alert-item info">
+                <div class="alert-title">ℹ️ Grazing Complete</div>
+                <div class="alert-detail">East Field reached 60% utilization</div>
+                <div class="alert-time">3 hours ago</div>
+                <button class="alert-action">Start Rest Period</button>
+            </div>
+            
+            <div class="data-source">
+                <span class="src-redis">Redis</span> Stream alerts (real-time)
+            </div>
+            
+            <div class="recommendations">
+                <h3 style="color: #00d9ff; margin-bottom: 15px; font-size: 14px;">Recommended Actions</h3>
+                
+                <div class="rec-item">
+                    <span class="priority priority-1">P1</span>
+                    Irrigate Upper Pasture within 24h
+                </div>
+                <div class="rec-item">
+                    <span class="priority priority-1">P1</span>
+                    Reduce stocking in North Pasture by 20%
+                </div>
+                <div class="rec-item">
+                    <span class="priority priority-2">P2</span>
+                    Move livestock to shade (heat protocol)
+                </div>
+                <div class="rec-item">
+                    <span class="priority priority-3">P3</span>
+                    Schedule soil pH test for East Field
+                </div>
+            </div>
+            
+            <div class="data-source">
+                <span class="src-neo4j">Neo4j</span> Advisory rules engine
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Simulated real-time updates
+        function updateMetrics() {
+            const ndvi = (0.40 + Math.random() * 0.05).toFixed(2);
+            const moisture = (11 + Math.random() * 3).toFixed(1);
+            const temp = (27 + Math.random() * 3).toFixed(1);
+            const height = (7.5 + Math.random() * 1.5).toFixed(1);
+            
+            document.querySelector('.metric-card.ndvi .value').textContent = ndvi;
+            document.querySelector('.metric-card.moisture .value').textContent = moisture + '%';
+            document.querySelector('.metric-card.temp .value').textContent = temp + '°';
+            document.querySelector('.metric-card.height .value').textContent = height;
+        }
+        
+        // Update every 15 seconds (simulating Redis refresh)
+        setInterval(updateMetrics, 15000);
+        
+        // Field selection
+        document.querySelectorAll('.field-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.field-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
