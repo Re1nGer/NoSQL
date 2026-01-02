@@ -197,8 +197,7 @@ NEO4J_PASSWORD=password
 
 ## 📝 License
 
-This project is for educational purposes as part of the NoSQL course final assignment.
+This project is for educational purposes as part of the NoSQL course final assignment at Riga Nordic University.
 
 ## 👥 Team
-
-Data Engineering Team - Agricultural Advisory Service
+Bekjon Ibragimov
