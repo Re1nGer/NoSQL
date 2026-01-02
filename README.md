@@ -185,6 +185,11 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=password
 ```
 
+# Dashboard
+<img width="1900" height="957" alt="image" src="https://github.com/user-attachments/assets/8e482999-b27e-4f57-9670-f79ec46891ae" />
+
+
+
 ## 📊 Key Metrics Tracked
 
 | Category      | Metrics                                           |
